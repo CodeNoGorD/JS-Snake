@@ -7,7 +7,9 @@ window.addEventListener('load', () => {
     let fullSnake = [];
     let fruits = [];
     let score = 0;
-
+    let gameOver = false;
+    let snakeLastX;
+    let snakeLastY;
 
     class Snake {
         constructor(x, y) {
@@ -18,8 +20,8 @@ window.addEventListener('load', () => {
             this.width = 50;
             this.height = 50;
             this.input = new InputHandler();
-            this.vx = 5;
-            this.vy = 5;
+            this.vx = 2;
+            this.vy = 2;
             this.edge = false;
             this.image = document.querySelector('#corps');
         }
@@ -110,27 +112,49 @@ window.addEventListener('load', () => {
             if (fullSnake[0].x > canvas.width - fullSnake[0].width) {
                 fullSnake[0].x = canvas.width - fullSnake[0].width;
                 fullSnake[0].edge = true;
+                gameOver = true;
             }
             //gauche
             else if (fullSnake[0].x < 0) {
                 fullSnake[0].x = 0;
                 fullSnake[0].edge = true;
+                gameOver = true;
             }
             //bas
             else if (fullSnake[0].y > canvas.height - fullSnake[0].height) {
                 fullSnake[0].y = canvas.height - fullSnake[0].height;
                 fullSnake[0].edge = true;
+                gameOver = true;
             }
             //haut
             else if (fullSnake[0].y < 0) {
                 fullSnake[0].y = 0;
                 fullSnake[0].edge = true;
+                gameOver = true;
             }
 
-            //GESTION DU CORPS
+            //GESTION DES COLLISIONS
 
-            // GESTION DES COLLISIONS
-
+            // COLLISION NORD
+            if(fullSnake[0].y + fullSnake[0].height > this.y){
+                snakeLastX = fullSnake[fullSnake.length -1].x;
+                snakeLastY = fullSnake[fullSnake.length -1].y - 50;
+            }
+            // COLLISION SUD
+            if(fullSnake[0].y < this.y + this.height){
+                snakeLastX = fullSnake[fullSnake.length -1].x;
+                snakeLastY = fullSnake[fullSnake.length -1].y + 50;
+            }
+            // COLLISION OUEST
+            if(fullSnake[0].x + fullSnake[0].width > this.x){
+                snakeLastX = fullSnake[fullSnake.length -1].x - 50;
+                snakeLastY = fullSnake[fullSnake.length -1].y;
+            }
+            // COLLISION EST
+            if(fullSnake[0].x < this.x + this.width){
+                snakeLastX = fullSnake[fullSnake.length -1].x + 50;
+                snakeLastY = fullSnake[fullSnake.length -1].y;
+            }
 
         }
         draw(context) {
@@ -138,6 +162,7 @@ window.addEventListener('load', () => {
             context.fillStyle = 'red';
             context.fillRect(this.x, this.y, this.width, this.height);
         }
+
     }
 
     class InputHandler {
@@ -181,6 +206,7 @@ window.addEventListener('load', () => {
         }
        
         update() {
+            // GESTION DISPARITION FRUIT
 
             if(fullSnake[0].x < this.x + this.width && fullSnake[0].x + fullSnake[0].width > this.x && fullSnake[0].y < this.y + this.height && fullSnake[0].y + fullSnake[0].height > this.y){
                 this.markedForDeletion = true;
@@ -191,12 +217,39 @@ window.addEventListener('load', () => {
         draw(context) {
             context.drawImage(this.image,this.x, this.y, this.width, this.height);
         }
-    
+    }
+
+    class UI{
+        constructor(snake){
+            this.snake = snake;
+            this.scoreSize = 40;
+            this.gameOverSize = 60;
+            this.fontFamily ='Helvetica';
+            this.textScore = 'Score : ';
+            this.textGameOver = 'GameOver ! Voici votre score : ';
+        }
+       draw(context){
+            context.font = this.scoreSize +'px '+ this.fontFamily;
+            context.fillStyle = 'black';
+            context.fillText(this.textScore + score, 12, 42);
+            context.font = this.scoreSize +'px '+ this.fontFamily;
+            context.fillStyle = 'blue';
+            context.fillText(this.textScore + score, 10, 40);
+            if (gameOver){
+                context.font = this.gameOverSize +'px '+this.fontFamily;
+                context.fillStyle = 'black';
+                context.fillText(this.textGameOver + score, canvas.width * 0.5 - 398, canvas.height * 0.5 + 2);
+                context.font = this.gameOverSize +'px '+this.fontFamily;
+                context.fillStyle = 'blue';
+                context.fillText(this.textGameOver + score, canvas.width * 0.5 - 400, canvas.height * 0.5);
+            }
+        }
     }
 
     class Game {
         constructor(snake) {
             this.snake = snake;
+            this.UI = new UI(this);
         }
         update() {
             this.snake.forEach(element => {
@@ -209,33 +262,43 @@ window.addEventListener('load', () => {
 
         }
         draw(context) {
-            this.snake.forEach(element => {
-                element.draw(context);
-            });
             fruits.forEach(element => {
                 if(!element.markedForDeletion){
                     element.draw(context);
                 }
             });
+            this.snake.forEach(element => {
+                element.draw(context);
+            });
+            this.UI.draw(context);
         }
         createFruit(){
             fruits.push(new Fruit(fullSnake));
         }
+        // GESTION DES ELEMENTS DU CORPS QUI SE RAJOUTENT
+        snakeBody(){
+            fullSnake.push(new Snake(snakeLastX, snakeLastY));
+        }
     }
    
-    fullSnake.push(new Snake(300, 150), new Snake(250, 150), new Snake(200, 150), new Snake(150, 150), new Snake(100, 150), new Snake(50, 150));
+    fullSnake.push(new Snake(150, 150), new Snake(100, 150), new Snake(50, 150));
     fruits.push(new Fruit(fullSnake));
     const game = new Game(fullSnake);
 
+   
     function animate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         game.update();
         game.draw(ctx);
-        if(fruits.length === 0){
+        // GESTION REAPPARITION FRUIT
+        if(fruits.length == 0){
             game.createFruit();
-            this.score++;
+            score++;
+            game.snakeBody();
         }
-        requestAnimationFrame(animate);
+        if(!gameOver){
+            requestAnimationFrame(animate);
+        }
     }
     animate();
 });
